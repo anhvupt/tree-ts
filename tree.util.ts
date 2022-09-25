@@ -8,25 +8,60 @@ export interface INodeOf<T extends string | number> extends IFlatModelOf<T> {
 }
 
 export type INode = INodeOf<string | number>;
+export type IList = IFlatModelOf<string | number>[];
 
-export function toTree(flatList: Array<IFlatModelOf<string | number>>): Array<INode> {
-  return [];
+export function toTree(flatList: IList): Array<INode> {
+  return toTreeAndCount(flatList, flatList.length);
 }
 
-export function foreach(node: INode, callbackFn: (node: INode) => void): void {
-  callbackFn(node);
-  node.children.forEach(callbackFn);
+export function foreach(nodes: INode[] | INode, callbackFn: (node: INode) => void): void {
+  const foreachNode = (node: INode) => {
+    callbackFn(node);
+    node.children.forEach(callbackFn);
+  };
+  Array.isArray(nodes) ? nodes.forEach(foreachNode) : foreachNode(nodes);
 }
 
-export function find<T extends string | number>(
-  node: INode,
+export function find(
+  nodes: INode[] | INode,
   predicate: (node: INode) => boolean
 ): INode | undefined {
-  if (predicate(node)) return node;
-  let result: INode | undefined = undefined;
-  node.children.some((child) => {
-    result = find(child, predicate);
+  const findRecursive = (node: INode) => (predicate(node) ? node : find(node.children, predicate));
+
+  if (!Array.isArray(nodes)) {
+    return findRecursive(nodes);
+  }
+  let result: INode | undefined;
+  nodes.some((node) => {
+    result = findRecursive(node);
     return !!result;
   });
   return result;
+}
+
+function toTreeAndCount(
+  list: IList,
+  length: number,
+  nodes: INode[] = [],
+  count: number = 0
+): INode[] {
+  const remain: IList = [];
+  count++;
+  if (count >= length) {
+    remain.length && console.error('cannot find parent for: ', remain);
+    return nodes;
+  }
+  list.forEach((item) => {
+    if (item.parentId === undefined) {
+      nodes.push({ ...item, children: [] });
+      return;
+    }
+    const parent = find(nodes, (x) => x.id === item.parentId);
+    if (parent) {
+      parent.children.push({ ...item, children: [] });
+      return;
+    }
+    remain.push(item);
+  });
+  return remain.length ? toTreeAndCount(remain, length, nodes, count) : nodes;
 }

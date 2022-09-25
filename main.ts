@@ -1,12 +1,8 @@
-import express from 'express';
 import { toTree } from './tree.util';
-const app = express();
-const port = 3000;
 
+const flatList = [
+  { id: 0, text: 'root' },
+  { id: 1, text: '1', parentId: 0 }
+];
 
-app.listen(port, () => {
-  const flatList = [{ id: 0, text: 'root' }];
-  console.log(toTree(flatList));
-  return console.log(`Express is listening at http://localhost:${port}`);
-});
-
+console.log(JSON.stringify(toTree(flatList)));
