@@ -1,37 +1,39 @@
-export interface IFlatModelOf<T extends string | number> {
+export interface IFlatModel<T extends string | number> {
   id: T;
   parentId?: T;
 }
 
-export interface INodeOf<T extends string | number> extends IFlatModelOf<T> {
-  children: INodeOf<T>[];
+export interface INode<T extends string | number> extends IFlatModel<T> {
+  children: INode<T>[];
 }
+export type IList<T extends string | number> = IFlatModel<T>[];
 
-export type INode = INodeOf<string | number>;
-export type IList = IFlatModelOf<string | number>[];
-
-export function toTree(flatList: IList): Array<INode> {
+export function toTree<T extends string | number>(flatList: IList<T>): Array<INode<T>> {
   return toTreeAndCount(flatList, flatList.length);
 }
 
-export function foreach(nodes: INode[] | INode, callbackFn: (node: INode) => void): void {
-  const foreachNode = (node: INode) => {
+export function foreach<T extends string | number>(
+  nodes: INode<T>[] | INode<T>,
+  callbackFn: (node: INode<T>) => void
+): void {
+  const foreachNode = (node: INode<T>) => {
     callbackFn(node);
     node.children.forEach(callbackFn);
   };
   Array.isArray(nodes) ? nodes.forEach(foreachNode) : foreachNode(nodes);
 }
 
-export function find(
-  nodes: INode[] | INode,
-  predicate: (node: INode) => boolean
-): INode | undefined {
-  const findRecursive = (node: INode) => (predicate(node) ? node : find(node.children, predicate));
+export function find<T extends string | number>(
+  nodes: INode<T>[] | INode<T>,
+  predicate: (node: INode<T>) => boolean
+): INode<T> | undefined {
+  const findRecursive = (node: INode<T>) =>
+    predicate(node) ? node : find(node.children, predicate);
 
   if (!Array.isArray(nodes)) {
     return findRecursive(nodes);
   }
-  let result: INode | undefined;
+  let result: INode<T> | undefined;
   nodes.some((node) => {
     result = findRecursive(node);
     return !!result;
@@ -39,13 +41,13 @@ export function find(
   return result;
 }
 
-function toTreeAndCount(
-  list: IList,
+function toTreeAndCount<T extends string | number>(
+  list: IList<T> | INode<T>[],
   length: number,
-  nodes: INode[] = [],
+  nodes: INode<T>[] = [],
   count: number = 0
-): INode[] {
-  const remain: IList = [];
+): INode<T>[] {
+  const remain: INode<T>[] = [];
   count++;
   if (count >= length) {
     remain.length && console.error('cannot find parent for: ', remain);
@@ -53,15 +55,15 @@ function toTreeAndCount(
   }
   list.forEach((item) => {
     if (item.parentId === undefined) {
-      nodes.push({ ...item, children: [] });
+      nodes.push({ ...item, children: item.children || [] });
       return;
     }
     const parent = find(nodes, (x) => x.id === item.parentId);
     if (parent) {
-      parent.children.push({ ...item, children: [] });
+      parent.children.push({ ...item, children: item.children || [] });
       return;
     }
-    remain.push(item);
+    remain.push({ ...item, children: item.children || [] });
   });
   return remain.length ? toTreeAndCount(remain, length, nodes, count) : nodes;
 }
