@@ -9,7 +9,7 @@ export interface INode<T extends string | number> extends IFlatModel<T> {
 export type IList<T extends string | number> = IFlatModel<T>[];
 
 export function toTree<T extends string | number>(flatList: IList<T>): Array<INode<T>> {
-  return toTreeAndCount(flatList, flatList.length);
+  return toTreeRecursive(flatList, flatList.length);
 }
 
 export function foreach<T extends string | number>(
@@ -41,7 +41,7 @@ export function find<T extends string | number>(
   return result;
 }
 
-function toTreeAndCount<T extends string | number>(
+function toTreeRecursive<T extends string | number>(
   list: IList<T> | INode<T>[],
   length: number,
   nodes: INode<T>[] = [],
@@ -54,16 +54,28 @@ function toTreeAndCount<T extends string | number>(
     return nodes;
   }
   list.forEach((item) => {
+    const newNode = { ...item, children: item.children || [] };
     if (item.parentId === undefined) {
-      nodes.push({ ...item, children: item.children || [] });
+      nodes.push(newNode);
       return;
     }
-    const parent = find(nodes, (x) => x.id === item.parentId);
-    if (parent) {
-      parent.children.push({ ...item, children: item.children || [] });
+    const isAddSucceed = findAndAddChild(nodes, newNode) || findAndAddChild(remain, newNode);
+    if (isAddSucceed) {
       return;
     }
-    remain.push({ ...item, children: item.children || [] });
+    remain.push(newNode);
   });
-  return remain.length ? toTreeAndCount(remain, length, nodes, count) : nodes;
+  return remain.length ? toTreeRecursive(remain, length, nodes, count) : nodes;
+}
+
+function findAndAddChild<T extends string | number>(
+  nodes: INode<T>[],
+  child: INode<T>
+): INode<T> | undefined {
+  const parent = find(nodes, (x) => x.id === child.parentId);
+  if (parent) {
+    parent.children.push({ ...child });
+    return parent;
+  }
+  return undefined;
 }
